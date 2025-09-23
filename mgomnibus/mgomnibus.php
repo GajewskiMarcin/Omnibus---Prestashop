@@ -15,7 +15,7 @@ class MgOmnibus extends Module
     {
         $this->name = 'mgomnibus';
         $this->tab = 'front_office_features';
-        $this->version = '4.1.0'; // Multilingual labels support
+        $this->version = '4.2.0'; // Listing hook fix for modern themes (ProductLazyArray object)
         $this->author = ' marcingajewski.pl';
         $this->need_instance = 1;
         $this->bootstrap = true;
@@ -24,7 +24,6 @@ class MgOmnibus extends Module
 
         $this->displayName = $this->l('MG Omnibus - Lowest Price');
         $this->description = $this->l('Displays the lowest price of a product from the last 30 days according to the Omnibus Directive.');
-        // Linijka z ps_versions_compliancy została stąd usunięta
     }
     
     public function install()
@@ -38,7 +37,6 @@ class MgOmnibus extends Module
 
     public function uninstall()
     {
-        // Lista wszystkich kluczy konfiguracyjnych używanych przez moduł
         $configKeys = [
             'MGOMNIBUS_DAYS', 'MGOMNIBUS_MODE', 'MGOMNIBUS_PRICE_KIND',
             'MGOMNIBUS_SHOW_PERCENT', 'MGOMNIBUS_PRECISION', 'MGOMNIBUS_RETENTION',
@@ -290,13 +288,21 @@ class MgOmnibus extends Module
     private function renderOmnibusInfo($productData, $viewType)
     {
         $id_product = 0; $id_product_attribute = 0;
+
         if ($productData instanceof Product) {
             $id_product = $productData->id;
             $id_product_attribute = Tools::getIsset('id_product_attribute') ? (int)Tools::getValue('id_product_attribute') : (int)$productData->getDefaultIdProductAttribute();
         } elseif (is_array($productData) && isset($productData['id_product'])) {
             $id_product = $productData['id_product'];
             $id_product_attribute = $productData['id_product_attribute'] ?? ($productData['default_id_product_attribute'] ?? 0);
+        } elseif (is_object($productData) && (isset($productData->id) || isset($productData->id_product))) {
+            // *** POCZĄTEK POPRAWKI DLA LISTINGU ***
+            // Obsługa obiektów typu ProductLazyArray i innych obiektów
+            $id_product = $productData->id_product ?? $productData->id;
+            $id_product_attribute = $productData->id_product_attribute ?? 0;
+            // *** KONIEC POPRAWKI DLA LISTINGU ***
         }
+        
         if (!$id_product) return '';
 
         $context = $this->context;
