@@ -1,0 +1,88 @@
+=================================================
+  INSTRUKCJA OBSŁUGI MODUŁU: MG OMNIBUS
+  Wersja: 2.3.0
+  Data: 22.09.2025
+=================================================
+
+Dziękujemy za korzystanie z modułu MG Omnibus. Poniższa instrukcja pomoże Ci w pełni wykorzystać jego możliwości.
+
+
+1. WPROWADZENIE
+--------------------
+Moduł "MG Omnibus" służy do implementacji wymogów Dyrektywy Omnibus w Twoim sklepie PrestaShop 8. Jego głównym zadaniem jest automatyczne śledzenie historii cen produktów i wyświetlanie najniższej ceny z ostatnich 30 dni (lub innego, zdefiniowanego okresu) w momencie ogłaszania promocji.
+
+
+2. INSTALACJA
+--------------------
+1. Przejdź do "Moduły > Menedżer modułów" w panelu administracyjnym.
+2. Kliknij przycisk "Załaduj moduł" i wybierz pobraną paczkę `mgomnibus.zip`.
+3. Po pomyślnej instalacji moduł pojawi się na liście. Znajdź go i kliknij "Konfiguruj".
+
+
+3. KONFIGURACJA
+--------------------
+Panel konfiguracyjny pozwala na pełne dostosowanie działania modułu do Twoich potrzeb.
+
+--- USTAWIENIA OGÓLNE ---
+
+- Okres w dniach:
+  Liczba dni wstecz (domyślnie 30), z których moduł będzie wyszukiwał najniższą cenę.
+
+- Tryb wyświetlania:
+  * Zawsze: Informacja o najniższej cenie będzie widoczna cały czas. Jeśli nie ma historii cen, jako najniższa zostanie pokazana cena bieżąca.
+  * Tylko przy obniżce: Informacja pojawi się tylko wtedy, gdy aktualna cena produktu jest niższa od najniższej ceny z zadanego okresu.
+
+- Rodzaj ceny:
+  Określa, czy moduł ma operować na cenach Brutto (z podatkiem) czy Netto (bez podatku). Ustawienie powinno być spójne dla całego sklepu.
+
+- Pokazuj procent zmiany:
+  Włącza lub wyłącza wyświetlanie etykiety z procentem obniżki (np. "-15%") obok ceny Omnibus.
+
+- Dokładność (miejsca po przecinku):
+  Liczba miejsc po przecinku, do której zaokrąglane będą ceny przy porównywaniu. Domyślnie 2.
+
+- Etykieta na stronie produktu / na listingu produktów:
+  Pozwala zdefiniować osobne teksty, które pojawią się przed ceną Omnibus na karcie produktu oraz na listach kategorii. Można je tłumaczyć na różne języki.
+
+- Własny CSS:
+  Pole do wklejenia własnych stylów CSS, które nadpiszą domyślny wygląd wyświetlanej informacji. Style te są dodawane bezpośrednio w kodzie strony.
+
+--- USTAWIENIA ZAAWANSOWANE I CRON ---
+
+- Kontekst Logowania Cen:
+  * Logowanie dla wszystkich krajów / grup klientów: Domyślnie moduł zapisuje ceny dla wszystkich możliwych kontekstów (krajów, grup klientów), aby zapewnić 100% zgodności z dyrektywą. Jeśli wszyscy Twoi klienci widzą te same ceny, możesz odznaczyć te opcje, aby znacząco zmniejszyć rozmiar bazy danych.
+
+- Retencja logów (dni):
+  Określa, po ilu dniach stare zapisy cenowe zostaną automatycznie usunięte przez zadanie CRON w celu oszczędzania miejsca w bazie danych.
+
+- Token CRON:
+  Wyświetla unikalny token i pełny adres URL do skonfigurowania zadania CRON na serwerze. Zadanie CRON jest zalecane do okresowego zapisywania cen (jako kopia zapasowa) oraz do czyszczenia starych logów.
+
+
+4. DZIAŁANIE MODUŁU
+--------------------
+- Automatyczne logowanie cen: Moduł automatycznie wykrywa zmiany cen produktów oraz cen specjalnych (promocji) i natychmiast zapisuje je w historii.
+- Zadanie CRON: Regularne uruchamianie zadania CRON zapewnia, że historia cen jest kompletna (nawet dla cen zmienianych automatycznie) oraz że baza danych jest regularnie czyszczona ze starych wpisów.
+
+
+5. PANEL LOGÓW
+--------------------
+W menu głównym panelu administracyjnego znajdziesz zakładkę "Omnibus Price Logs". W tym miejscu możesz:
+- Przeglądać całą zapisaną historię zmian cen.
+- Filtrować wpisy po ID produktu lub jego nazwie.
+- Masowo usuwać wybrane wpisy.
+
+
+6. UŻYCIE W SZABLONACH (dla zaawansowanych)
+--------------------
+Moduł jest gotowy do integracji z page builderami (np. Creative Elements) dzięki dwóm własnym hookom:
+
+- Na stronie produktu: {hook h='displayMgOmnibusOnProduct'}
+- Na listingu produktów: {hook h='displayMgOmnibusOnListing' product=$product}
+
+Wystarczy wkleić odpowiedni shortcode w wybranym miejscu w szablonie.
+
+
+7. WSPARCIE
+--------------------
+W razie problemów lub pytań, skontaktuj się z autorem modułu.

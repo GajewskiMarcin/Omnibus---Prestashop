@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>mgomnibus</name>
+    <displayName><![CDATA[MG Omnibus - Najniższa cena]]></displayName>
+    <version><![CDATA[1.0.0]]></version>
+    <description><![CDATA[Wyświetla najniższą cenę produktu z ostatnich 30 dni zgodnie z dyrektywą Omnibus.]]></description>
+    <author><![CDATA[MG]]></author>
+    <tab><![CDATA[front_office_features]]></tab>
+    <is_configurable>1</is_configurable>
+    <need_instance>1</need_instance>
+    <ps_versions_compliancy>
+        <min>8.0.0</min>
+        <max>_PS_VERSION_</max>
+    </ps_versions_compliancy>
+</module>
