@@ -8,14 +8,13 @@ require_once __DIR__ . '/classes/PriceLogger.php';
 
 class MgOmnibus extends Module
 {
-    // DEFINICJA PRZENIESIONA TUTAJ, POZA CONSTRUCT, ABY NAPRAWIĆ BŁĄD SKANERA TŁUMACZEŃ
     public $ps_versions_compliancy = ['min' => '8.0.0', 'max' => _PS_VERSION_];
 
     public function __construct()
     {
         $this->name = 'mgomnibus';
         $this->tab = 'front_office_features';
-        $this->version = '4.2.0'; // Listing hook fix for modern themes (ProductLazyArray object)
+        $this->version = '5.0.0'; // Added logging mode selection (Instant vs CRON)
         $this->author = ' marcingajewski.pl';
         $this->need_instance = 1;
         $this->bootstrap = true;
@@ -41,7 +40,8 @@ class MgOmnibus extends Module
             'MGOMNIBUS_DAYS', 'MGOMNIBUS_MODE', 'MGOMNIBUS_PRICE_KIND',
             'MGOMNIBUS_SHOW_PERCENT', 'MGOMNIBUS_PRECISION', 'MGOMNIBUS_RETENTION',
             'MGOMNIBUS_CRON_TOKEN', 'MGOMNIBUS_CUSTOM_CSS', 'MGOMNIBUS_LOG_ALL_COUNTRIES',
-            'MGOMNIBUS_LOG_ALL_GROUPS', 'MGOMNIBUS_PRODUCT_LABEL', 'MGOMNIBUS_LISTING_LABEL'
+            'MGOMNIBUS_LOG_ALL_GROUPS', 'MGOMNIBUS_PRODUCT_LABEL', 'MGOMNIBUS_LISTING_LABEL',
+            'MGOMNIBUS_LOGGING_MODE'
         ];
 
         foreach ($configKeys as $key) {
@@ -66,22 +66,7 @@ class MgOmnibus extends Module
 
     private function installDb()
     {
-        $sql = "CREATE TABLE IF NOT EXISTS `" . _DB_PREFIX_ . "mgomnibus_price_history` (
-            `id_history` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `id_shop` INT UNSIGNED NOT NULL,
-            `id_product` INT UNSIGNED NOT NULL,
-            `id_product_attribute` INT UNSIGNED NOT NULL DEFAULT 0,
-            `id_currency` INT UNSIGNED NOT NULL,
-            `id_country` INT UNSIGNED NOT NULL,
-            `id_group` INT UNSIGNED NOT NULL,
-            `price_tax_excl` DECIMAL(20,6) NOT NULL,
-            `price_tax_incl` DECIMAL(20,6) NOT NULL,
-            `captured_at` DATETIME NOT NULL,
-            PRIMARY KEY (`id_history`),
-            KEY `idx_lookup` (`id_shop`,`id_product`,`id_product_attribute`,`id_currency`,`id_country`,`id_group`,`captured_at`),
-            KEY `idx_product` (`id_product`,`id_product_attribute`,`captured_at`)
-        ) ENGINE=" . _MYSQL_ENGINE_ . " DEFAULT CHARSET=utf8mb4;";
-
+        $sql = "CREATE TABLE IF NOT EXISTS `" . _DB_PREFIX_ . "mgomnibus_price_history` ( `id_history` INT UNSIGNED NOT NULL AUTO_INCREMENT, `id_shop` INT UNSIGNED NOT NULL, `id_product` INT UNSIGNED NOT NULL, `id_product_attribute` INT UNSIGNED NOT NULL DEFAULT 0, `id_currency` INT UNSIGNED NOT NULL, `id_country` INT UNSIGNED NOT NULL, `id_group` INT UNSIGNED NOT NULL, `price_tax_excl` DECIMAL(20,6) NOT NULL, `price_tax_incl` DECIMAL(20,6) NOT NULL, `captured_at` DATETIME NOT NULL, PRIMARY KEY (`id_history`), KEY `idx_lookup` (`id_shop`,`id_product`,`id_product_attribute`,`id_currency`,`id_country`,`id_group`,`captured_at`), KEY `idx_product` (`id_product`,`id_product_attribute`,`captured_at`) ) ENGINE=" . _MYSQL_ENGINE_ . " DEFAULT CHARSET=utf8mb4;";
         return Db::getInstance()->execute($sql);
     }
     
@@ -113,6 +98,7 @@ class MgOmnibus extends Module
 
     private function setDefaultConfiguration()
     {
+        Configuration::updateValue('MGOMNIBUS_LOGGING_MODE', 'instant');
         Configuration::updateValue('MGOMNIBUS_DAYS', 30);
         Configuration::updateValue('MGOMNIBUS_MODE', 'only_discount');
         Configuration::updateValue('MGOMNIBUS_PRICE_KIND', 'gross');
@@ -198,6 +184,20 @@ class MgOmnibus extends Module
                 'legend' => ['title' => $this->l('Advanced Settings & CRON'), 'icon' => 'icon-server'],
                 'input' => [
                     [
+                        'type' => 'select',
+                        'label' => $this->l('Logging Mode'),
+                        'name' => 'MGOMNIBUS_LOGGING_MODE',
+                        'options' => [
+                            'query' => [
+                                ['id' => 'instant', 'name' => $this->l('Instant (recommended)')],
+                                ['id' => 'cron', 'name' => $this->l('CRON only (for performance)')]
+                            ],
+                            'id' => 'id',
+                            'name' => 'name'
+                        ],
+                        'desc' => $this->l('Instant mode logs prices on every product save. CRON mode logs prices only when the CRON task is run.')
+                    ],
+                    [
                         'type' => 'checkbox',
                         'label' => $this->l('Price Logging Context'),
                         'name' => 'MGOMNIBUS_LOG',
@@ -268,11 +268,16 @@ class MgOmnibus extends Module
         }
         return true;
     }
+    
+    private function isInstantLoggingMode()
+    {
+        return Configuration::get('MGOMNIBUS_LOGGING_MODE', null, null, null, 'instant') === 'instant';
+    }
 
-    public function hookActionObjectProductUpdateAfter($params) { $product = $params['object']; if ($product instanceof Product) { PriceLogger::logProductPrices($product->id); } }
-    public function hookActionObjectSpecificPriceAddAfter($params) { $sp = $params['object']; PriceLogger::logProductPrices($sp->id_product); }
-    public function hookActionObjectSpecificPriceUpdateAfter($params) { $sp = $params['object']; PriceLogger::logProductPrices($sp->id_product); }
-    public function hookActionObjectSpecificPriceDeleteAfter($params) { $sp = $params['object']; PriceLogger::logProductPrices($sp->id_product); }
+    public function hookActionObjectProductUpdateAfter($params) { if ($this->isInstantLoggingMode()) { $product = $params['object']; if ($product instanceof Product) { PriceLogger::logProductPrices($product->id); } } }
+    public function hookActionObjectSpecificPriceAddAfter($params) { if ($this->isInstantLoggingMode()) { $sp = $params['object']; PriceLogger::logProductPrices($sp->id_product); } }
+    public function hookActionObjectSpecificPriceUpdateAfter($params) { if ($this->isInstantLoggingMode()) { $sp = $params['object']; PriceLogger::logProductPrices($sp->id_product); } }
+    public function hookActionObjectSpecificPriceDeleteAfter($params) { if ($this->isInstantLoggingMode()) { $sp = $params['object']; PriceLogger::logProductPrices($sp->id_product); } }
 
     public function hookDisplayHeader() { $custom_css = Configuration::get('MGOMNIBUS_CUSTOM_CSS'); if (!empty($custom_css)) { return '<style>' . $custom_css . '</style>'; } }
     public function hookDisplayProductPriceBlock($params) { if ($params['type'] === 'after_price') { return $this->renderOmnibusInfo($params['product'], 'product'); } }
@@ -288,7 +293,7 @@ class MgOmnibus extends Module
     private function renderOmnibusInfo($productData, $viewType)
     {
         $id_product = 0; $id_product_attribute = 0;
-
+        
         if ($productData instanceof Product) {
             $id_product = $productData->id;
             $id_product_attribute = Tools::getIsset('id_product_attribute') ? (int)Tools::getValue('id_product_attribute') : (int)$productData->getDefaultIdProductAttribute();
@@ -296,11 +301,8 @@ class MgOmnibus extends Module
             $id_product = $productData['id_product'];
             $id_product_attribute = $productData['id_product_attribute'] ?? ($productData['default_id_product_attribute'] ?? 0);
         } elseif (is_object($productData) && (isset($productData->id) || isset($productData->id_product))) {
-            // *** POCZĄTEK POPRAWKI DLA LISTINGU ***
-            // Obsługa obiektów typu ProductLazyArray i innych obiektów
             $id_product = $productData->id_product ?? $productData->id;
             $id_product_attribute = $productData->id_product_attribute ?? 0;
-            // *** KONIEC POPRAWKI DLA LISTINGU ***
         }
         
         if (!$id_product) return '';
